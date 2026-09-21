@@ -2,15 +2,11 @@
 // Price (FastAPI) service. The React app calls `/api/market/products/…` and
 // this function forwards to Render, which removes the browser CORS restriction.
 //
-// NOTE: this file lives at the REPO ROOT (`<root>/api/…`) because this
-// project's Vercel Root Directory is the repo root — Vercel only deploys
-// functions from `<root>/api/` and only reads `<root>/vercel.json`. (A copy
-// is kept at `frontend-react/api/` for setups whose Root Directory is
-// `frontend-react`; only one copy is ever active, so they never conflict.)
+// This is a catch-all route (`api/market/[...path].js`) so that every subpath
+// under `/api/market/` reaches this handler. (A plain `api/market.js` would
+// only match the exact path `/api/market`, and subpath calls would fall
+// through to the SPA rewrite and come back as index.html.)
 //
-// Catch-all route (`api/market/[...path].js`) so every subpath under
-// `/api/market/` reaches this handler. A plain `api/market.js` would only
-// match the exact path `/api/market` and subpath calls would 404.
 // The SPA rewrite in vercel.json (`/((?!api/).*)` → `/index.html`) explicitly
 // excludes `/api/*`, so this function takes precedence for `/api/market`.
 
