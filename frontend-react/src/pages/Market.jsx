@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { dedupePriceRows, getAllPrices, getLocations, searchBackendProducts } from "../lib/api.js";
+import { dedupePriceRows, getAllPricesProgressive, getCachedPrices, getLocations, searchBackendProducts, storePrices } from "../lib/api.js";
 import { useLang } from "../lib/i18n.jsx";
 import { TrendIcon } from "../components/bits.jsx";
 
@@ -35,7 +35,7 @@ export default function Market() {
       return "";
     }
   }
-  const [allPrices, setAllPrices] = useState([]);
+  const [allPrices, setAllPrices] = useState(() => getCachedPrices(initStateSel()));
   const [q, setQ] = useState(readP("q"));
   const [stateSel, setStateSel] = useState(initStateSel());
   const [states, setStates] = useState([]);
@@ -50,16 +50,27 @@ export default function Market() {
 
   useEffect(() => {
     let cancelled = false;
-    getAllPrices(stateSel).then((rows) => {
-      if (!cancelled) {
-        setAllPrices(rows);
-      }
-    });
+    const ctrl = new AbortController();
+    // Seed instantly from the last visit so the grid paints immediately,
+    // then stream live rows in per crop (first paint after ~1 lookup,
+    // not after the slowest of 19) and persist for the next visit.
+    setAllPrices(getCachedPrices(stateSel));
     // New state scope invalidates the previous query's backend rows until
     // the debounced search below refetches them for the new scope.
     setBackendRows([]);
+    getAllPricesProgressive(stateSel, {
+      signal: ctrl.signal,
+      onBatch: (batch) => {
+        if (!cancelled) setAllPrices((prev) => dedupePriceRows([...prev, ...batch]));
+      },
+    }).then((rows) => {
+      if (cancelled) return;
+      setAllPrices(rows);
+      storePrices(stateSel, rows);
+    });
     return () => {
       cancelled = true;
+      ctrl.abort();
     };
   }, [stateSel]);
 

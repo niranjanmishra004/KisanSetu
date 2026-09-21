@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     const body = await up.text();
     res.statusCode = up.status;
     res.setHeader("content-type", "application/json");
-    res.setHeader("cache-control", "public, max-age=60, s-maxage=300");
+    res.setHeader("cache-control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
     res.end(body);
   } catch {
     res.statusCode = 502;

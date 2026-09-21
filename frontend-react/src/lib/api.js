@@ -364,43 +364,124 @@ export async function getCropPrice(cropId, state) {
 
 export async function getAllPrices(state) {
   const st = state !== undefined ? state : currentState();
-  if (USE_LIVE_MARKET_API) {
-    const nested = await Promise.all(
-      MOCK_CROPS.map(async (c) => {
-        const mock = MOCK_MARKET_PRICES[c.id];
-        const lives = await fetchBackendPricesBest(c.name, st);
-        // Every backend record becomes a row so multi-match products are
-        // never truncated to data[0]. The exact product-name match (when
-        // present) keeps the familiar local card; otherwise the first
-        // record is representative (e.g. Green Cabbage price on the Cabbage
-        // card) and the rest become synthetic variant cards.
-        if (Array.isArray(lives) && lives.length) {
-          const exactIdx = lives.findIndex(
-            (live) =>
-              String(live.product_name || "").toLowerCase() === c.name.toLowerCase()
-          );
-          const ordered =
-            exactIdx > 0
-              ? [lives[exactIdx], ...lives.slice(0, exactIdx), ...lives.slice(exactIdx + 1)]
-              : lives;
-          return ordered.map((live, idx) =>
-            idx === 0
-              ? { crop: c, price: liveToPrice(live, mock) }
-              : backendRowFor(live, null, undefined)
-          );
-        }
-        // Affirmative miss (null) → hide the crop. Outage (undefined) →
-        // demo fallback so the grid never goes blank.
-        if (lives === undefined && mock) return [{ crop: c, price: { ...mock, live: false } }];
-        return [];
-      })
+  if (!USE_LIVE_MARKET_API) {
+    await delay();
+    return MOCK_CROPS.map((c) => ({ crop: c, price: MOCK_MARKET_PRICES[c.id] })).filter(
+      (p) => p.price
     );
-    return dedupePriceRows(nested.flat().filter((r) => r && r.price));
   }
-  await delay();
-  return MOCK_CROPS.map((c) => ({ crop: c, price: MOCK_MARKET_PRICES[c.id] })).filter(
-    (p) => p.price
-  );
+  // Single code path with the progressive loader below (no onBatch → one
+  // promise, same rows as before). Keeps Home/search callers unchanged.
+  return getAllPricesProgressive(st);
+}
+
+/* ---------------- Perceived-latency helpers (cold-start mitigation) -------- */
+
+const PRICES_STORE_KEY = "kisansetu_prices_v1";
+
+/** Map one local crop + its backend records to 1..n display rows. */
+function rowsForLocalCrop(c, lives) {
+  const mock = MOCK_MARKET_PRICES[c.id];
+  // Exact product-name match (when present) keeps the familiar local card;
+  // otherwise the first record is representative (e.g. Green Cabbage price
+  // on the Cabbage card) and the rest become synthetic variant cards.
+  if (Array.isArray(lives) && lives.length) {
+    const exactIdx = lives.findIndex(
+      (live) => String(live.product_name || "").toLowerCase() === c.name.toLowerCase()
+    );
+    const ordered =
+      exactIdx > 0
+        ? [lives[exactIdx], ...lives.slice(0, exactIdx), ...lives.slice(exactIdx + 1)]
+        : lives;
+    return ordered.map((live, idx) =>
+      idx === 0
+        ? { crop: c, price: liveToPrice(live, mock) }
+        : backendRowFor(live, null, undefined)
+    );
+  }
+  // Affirmative miss (null) → hide the crop (return []). Outage
+  // (undefined) → demo fallback so the grid never goes blank.
+  if (lives === undefined && mock) return [{ crop: c, price: { ...mock, live: false } }];
+  return [];
+}
+
+/**
+ * Progressive variant of getAllPrices: invokes onBatch with each crop's
+ * rows as soon as that crop resolves, instead of waiting for the slowest
+ * of 19 parallel lookups. Concurrency is capped (6) to stay within the
+ * browser's per-origin connection limit. In-flight fetches are NOT aborted
+ * on `signal` (fetchBackendPrices has no signal param) — the signal only
+ * stops scheduling new crops and delivering batches, while completed
+ * responses still warm the shared in-memory cache.
+ */
+export async function getAllPricesProgressive(state, { onBatch, signal } = {}) {
+  const st = state !== undefined ? state : currentState();
+  if (!USE_LIVE_MARKET_API) {
+    await delay();
+    const rows = MOCK_CROPS.map((c) => ({
+      crop: c,
+      price: MOCK_MARKET_PRICES[c.id],
+    })).filter((p) => p.price);
+    if (!signal?.aborted) onBatch?.(rows);
+    return rows;
+  }
+  const collected = [];
+  let next = 0;
+  async function worker() {
+    while (!signal?.aborted) {
+      const i = next++;
+      if (i >= MOCK_CROPS.length) return;
+      const batch = rowsForLocalCrop(MOCK_CROPS[i], await fetchBackendPricesBest(MOCK_CROPS[i].name, st));
+      if (signal?.aborted || !batch.length) continue;
+      collected.push(...batch);
+      try {
+        onBatch?.(batch);
+      } catch {
+        /* caller-side render errors must not break the remaining crops */
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: 6 }, worker));
+  return dedupePriceRows(collected);
+}
+
+/** Last successfully loaded rows, persisted so repeat visits paint instantly. */
+export function getCachedPrices(state) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PRICES_STORE_KEY) || "null");
+    if (saved && saved.state === (state || "") && Array.isArray(saved.rows)) return saved.rows;
+  } catch {
+    /* corrupted storage: fall through to empty */
+  }
+  return [];
+}
+
+/** Persist rows for instant seeding on the next visit (best-effort). */
+export function storePrices(state, rows) {
+  try {
+    if (Array.isArray(rows) && rows.length) {
+      localStorage.setItem(
+        PRICES_STORE_KEY,
+        JSON.stringify({ t: Date.now(), state: state || "", rows })
+      );
+    }
+  } catch {
+    /* private mode / quota: caching is optional */
+  }
+}
+
+/**
+ * Fire-and-forget wake-up for the free-tier backend (sleeps when idle).
+ * Called once on app boot so Render is already warm by the time the user
+ * opens Market. Never throws; result is ignored — normal lookups retry.
+ */
+export function warmMarketApi() {
+  if (!USE_LIVE_MARKET_API) return;
+  try {
+    void fetch(`${MARKET_API_BASE}/health`, { cache: "no-store" }).catch(() => {});
+  } catch {
+    /* ignore */
+  }
 }
 
 /**

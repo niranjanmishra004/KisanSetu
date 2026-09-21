@@ -1,13 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Navbar, Footer, LocationModal } from "./chrome.jsx";
-import { getSavedLocation } from "../lib/api.js";
+import { getSavedLocation, warmMarketApi } from "../lib/api.js";
 import { useLang } from "../lib/i18n.jsx";
 
 export default function Layout() {
   const { t } = useLang();
   const [location, setLocation] = useState(() => getSavedLocation());
   const [locOpen, setLocOpen] = useState(false);
+
+  // Wake the free-tier backend on first paint so it is (hopefully) warm by
+  // the time the user opens Market. Fire-and-forget, never blocks render.
+  useEffect(() => {
+    warmMarketApi();
+  }, []);
 
   return (
     <>
