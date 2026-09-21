@@ -93,6 +93,13 @@ export default function Market() {
     const next = new URLSearchParams(params.toString());
     // Always write the state key (even "" for All India) so the choice is sticky.
     next.set("state", s);
+    // Carry the currently typed query into the URL. The input only updates
+    // local state (not the URL), so without this the `setQ(readP("q"))`
+    // sync below would resurrect the stale `?q=` value (e.g. "carrot") and
+    // wipe what the user just typed (e.g. "garlic") whenever state changes.
+    const curQ = q.trim();
+    if (curQ) next.set("q", curQ);
+    else next.delete("q");
     setStateSel(s);
     setSearchParams(next);
   }
