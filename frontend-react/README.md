@@ -86,7 +86,7 @@ Run locally: `uvicorn main:app --host 0.0.0.0 --port 8000`.
 - `src/lib/i18n.jsx` — EN/HI/BN dictionaries, crop/category/unit translators, `LanguageProvider`, `validators()`
 - `src/lib/validation.js` — `validateValues(values, { field: [rules] })` runner
 - `src/css/` — `theme.css` (design tokens) + `style.css` (market-ledger theme)
-- `api/market.js` + `vite.config.js` + `vercel.json` — same-origin API proxy + SPA rewrites
+- `vite.config.js` (dev proxy) + root `api/market/[...path].js` and root `vercel.json` — same-origin API proxy + SPA rewrites
 
 ## Language
 

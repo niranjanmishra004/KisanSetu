@@ -4,9 +4,7 @@
 //
 // NOTE: this file lives at the REPO ROOT (`<root>/api/…`) because this
 // project's Vercel Root Directory is the repo root — Vercel only deploys
-// functions from `<root>/api/` and only reads `<root>/vercel.json`. (A copy
-// is kept at `frontend-react/api/` for setups whose Root Directory is
-// `frontend-react`; only one copy is ever active, so they never conflict.)
+// functions from `<root>/api/` and only reads `<root>/vercel.json`.
 //
 // Catch-all route (`api/market/[...path].js`) so every subpath under
 // `/api/market/` reaches this handler. A plain `api/market.js` would only

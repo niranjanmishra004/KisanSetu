@@ -22,7 +22,7 @@ npm run build     # → dist/
 npm run preview   # serve the production build locally
 ```
 
-Deploys as a static Vite site (Vercel config in `frontend-react/vercel.json` keeps
+Deploys as a static Vite site (Vercel config in the root `vercel.json` keeps
 `/api/market` on the serverless proxy and rewrites everything else to
 `index.html`). Internet is needed for CDNs (Bootstrap Icons 1.11.3, Fraunces +
 IBM Plex + Noto Sans Devanagari/Bengali fonts) and for the live price API.
