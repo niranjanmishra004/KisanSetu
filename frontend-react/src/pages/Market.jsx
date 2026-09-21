@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getAllPrices, getLocations } from "../lib/api.js";
+import { dedupePriceRows, getAllPrices, getLocations, searchBackendProducts } from "../lib/api.js";
 import { useLang } from "../lib/i18n.jsx";
 import { TrendIcon } from "../components/bits.jsx";
 
@@ -39,18 +39,54 @@ export default function Market() {
   const [q, setQ] = useState(readP("q"));
   const [stateSel, setStateSel] = useState(initStateSel());
   const [states, setStates] = useState([]);
+  // Direct backend matches for the raw user query (products outside the
+  // 19-crop local directory, e.g. honey/egg, plus extra variants). Merged
+  // with the directory rows below — one request per search, deduplicated.
+  const [backendRows, setBackendRows] = useState([]);
 
   useEffect(() => {
     getLocations().then((l) => setStates(Object.keys(l)));
   }, []);
 
   useEffect(() => {
-    getAllPrices(stateSel).then(setAllPrices);
+    let cancelled = false;
+    getAllPrices(stateSel).then((rows) => {
+      if (!cancelled) {
+        setAllPrices(rows);
+      }
+    });
+    // New state scope invalidates the previous query's backend rows until
+    // the debounced search below refetches them for the new scope.
+    setBackendRows([]);
+    return () => {
+      cancelled = true;
+    };
   }, [stateSel]);
 
   useEffect(() => {
     setQ(readP("q"));
   }, [params]);
+
+  // Fetch backend-only matches for the current search text (debounced).
+  // Short (<2 char) queries stay local-only: the backend substring search
+  // is slow for single letters and would add noise without value.
+  useEffect(() => {
+    const needle = q.trim();
+    if (needle.length < 2) {
+      setBackendRows([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      searchBackendProducts(needle, { state: stateSel }).then((rows) => {
+        if (!cancelled) setBackendRows(rows);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [q, stateSel]);
 
   function changeState(s) {
     if (s === stateSel) return;
@@ -63,16 +99,22 @@ export default function Market() {
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const filtered = allPrices.filter(
+    // allPrices already contains every backend record for the 19 directory
+    // crops (multi-match variants included — no data[0] truncation). When a
+    // search is active we additionally merge direct backend matches so the
+    // ~392 products outside the directory become visible, deduplicated by
+    // backend product identity.
+    const pool = needle ? dedupePriceRows([...allPrices, ...backendRows]) : allPrices;
+    const filtered = pool.filter(
       ({ crop }) =>
         !needle ||
         crop.name.toLowerCase().includes(needle) ||
-        crop.local.toLowerCase().includes(needle) ||
+        (crop.local || "").toLowerCase().includes(needle) ||
         cropName(crop).toLowerCase().includes(needle) ||
         cropLocal(crop).toLowerCase().includes(needle)
     );
     return [...filtered].sort((a, b) => cropName(a.crop).localeCompare(cropName(b.crop)));
-  }, [allPrices, q, cropName, cropLocal]);
+  }, [allPrices, backendRows, q, cropName, cropLocal]);
 
   return (
     <main id="main" className="section-tight">

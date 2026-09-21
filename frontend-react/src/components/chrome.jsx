@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { searchCrops, getSavedLocation, saveLocation, detectLocation } from "../lib/api.js";
+import { searchCrops, getSavedLocation, saveLocation, detectLocation, searchCropsLive } from "../lib/api.js";
 import { useLang, LANGS } from "../lib/i18n.jsx";
 import { Logo } from "./bits.jsx";
 import LocationSelects from "./LocationSelects.jsx";
@@ -60,7 +60,16 @@ export function Navbar({ location, onOpenLocation }) {
       setOpen(false);
       return;
     }
-    const m = await searchCrops(v);
+    // Local hits first (fast, offline-capable), then backend-only products
+    // (honey, egg, …) appended. The slice(0, 6) dropdown cap is intentional
+    // UX — the full list stays one Enter away on the Market page.
+    let m = [];
+    try {
+      if (v.trim().length >= 2) m = await searchCropsLive(v);
+      else m = await searchCrops(v);
+    } catch {
+      m = await searchCrops(v).catch(() => []);
+    }
     setMatches(m.slice(0, 6));
     setOpen(m.length > 0);
   }
