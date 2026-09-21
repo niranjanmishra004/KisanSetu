@@ -6,7 +6,7 @@ import {
   addNotification,
   deleteNotification,
   getCropPrice,
-  getPriceHistory,
+  getObservedChangePct,
 } from "../lib/api.js";
 import { useLang } from "../lib/i18n.jsx";
 
@@ -52,15 +52,14 @@ export default function Alerts() {
       if (rule.condition === "above" && price.modal >= rule.threshold) hit = true;
       if (rule.condition === "below" && price.modal <= rule.threshold) hit = true;
       if (rule.condition === "percent_up" || rule.condition === "percent_down") {
-        const hist = await getPriceHistory(rule.crop, 8);
-        if (hist.length >= 2 && hist[0].price > 0) {
-          change =
-            Math.round(
-              ((hist[hist.length - 1].price - hist[0].price) / hist[0].price) * 1000
-            ) / 10;
-          if (rule.condition === "percent_up" && change >= rule.threshold) hit = true;
-          if (rule.condition === "percent_down" && change <= -rule.threshold) hit = true;
-        }
+        // Real movement only: % change across prices this app genuinely
+        // observed from the live backend in the last 7 days. null means
+        // "not enough history yet" — the rule waits instead of firing on
+        // demo data.
+        change = getObservedChangePct(rule.crop, 7);
+        if (change === null) continue;
+        if (rule.condition === "percent_up" && change >= rule.threshold) hit = true;
+        if (rule.condition === "percent_down" && change <= -rule.threshold) hit = true;
       }
 
       if (hit) {
@@ -78,7 +77,33 @@ export default function Alerts() {
       }
     }
 
-    setNews(await getNotifications());
+    setNews(await enrichWithLive(await getNotifications()));
+  }
+
+  /**
+   * Attach the *current* live price to each stored item (not persisted —
+   * recomputed on every visit), so the feed shows real data every time, not
+   * just the snapshot from when the rule fired. Live lookup fails → the
+   * stored snapshot still renders on its own.
+   */
+  async function enrichWithLive(items) {
+    const crops = [...new Set(items.map((n) => n.crop).filter(Boolean))];
+    const nowPrices = {};
+    await Promise.all(
+      crops.map(async (c) => {
+        try {
+          const p = await getCropPrice(c);
+          if (p) nowPrices[c] = p;
+        } catch {
+          /* keep snapshot only */
+        }
+      })
+    );
+    return items.map((n) =>
+      nowPrices[n.crop]
+        ? { ...n, liveNow: nowPrices[n.crop].modal, liveUnit: nowPrices[n.crop].unit }
+        : n
+    );
   }
 
   useEffect(() => {
@@ -88,7 +113,7 @@ export default function Alerts() {
 
   async function dismiss(id) {
     await deleteNotification(id);
-    setNews(await getNotifications());
+    setNews(await enrichWithLive(await getNotifications()));
   }
 
   return (
@@ -114,6 +139,11 @@ export default function Alerts() {
                       <span className="muted text-sm"> · {n.location}</span>
                     </div>
                     <div className="mt-2">{messageFor(n)}</div>
+                    {n.liveNow != null && (
+                      <div className="muted text-sm" style={{ marginTop: 4 }}>
+                        {t("al.now", { p: n.liveNow, u: unitName(n.liveUnit || n.unit) })}
+                      </div>
+                    )}
                     <div className="muted text-sm" style={{ marginTop: 4 }}>
                       {timeAgo(n.createdAt)}
                     </div>

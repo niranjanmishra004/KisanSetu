@@ -5,7 +5,7 @@
 React 19 + Vite + `react-router-dom` app, mobile-first, for an Indian
 agricultural market-price tracker. **All pages are open — no login, no
 signup.** **Live market prices** come from the FastAPI backend
-(Agmarknet-backed); farmer listings, alerts, price-history shapes and the
+(Agmarknet-backed); alerts, price-history shapes and the
 location directory are local demo data. Prices served from the demo
 fallback (backend unreachable) carry no live-source badge.
 
@@ -43,8 +43,7 @@ Icons are Bootstrap Icons (SVG) — no emojis in the UI.
 | ----- | ------- |
 | `/` | Home: hero, crop search with autocomplete, location flow, quick actions, trending crops, how-it-works |
 | `/market` | All crops with **live** price + trend; search, state filter, sort |
-| `/crop?crop=tomato` | Crop detail: quantity calculator (kg/quintal/tonne), price range, min/avg/max, Chart.js history (7d–1y), nearby-farmers table with filters, price-alert modal |
-| `/farmers` | Nearby farmer listings with filters (crop, distance, price, verified); approximate localities only |
+| `/crop?crop=tomato` | Crop detail: quantity calculator (kg/quintal/tonne), price range, min/avg/max, Chart.js history (7d–1y), price-alert modal |
 
 ## Features
 
@@ -62,7 +61,9 @@ Icons are Bootstrap Icons (SVG) — no emojis in the UI.
   the live modal price and slices 7/30/90/180/365-day ranges (Chart.js line).
 - **Price alerts** — rules created per crop (`above` / `below` / `percent_up` /
   `percent_down`); the Alerts page evaluates them against live prices and posts
-  one news item per hit, expiring after 7 days.
+  one news item per genuine hit, expiring after 7 days. No demo seeding — an
+  empty feed means nothing has triggered. Percent rules use price history this
+  app actually observed from the live backend (no history yet → the rule waits).
 - **Location flow** — browser geolocation → BigDataCloud / Nominatim reverse-geocode
   → `ipapi.co` IP fallback → manual State→District→Town picker with an
   **"Other town / village"** free-text fallback; saved to `localStorage`.
@@ -125,7 +126,7 @@ Run locally: `uvicorn main:app --host 0.0.0.0 --port 8000`.
 - `frontend-react/src/App.jsx` — router (`BrowserRouter`, `Layout` outlet, redirects for removed auth routes)
 - `frontend-react/src/components/` — `chrome.jsx` (`Navbar`/`Footer`/`LocationModal`), `Layout.jsx`,
   `LocationSelects.jsx`, `PriceChart.jsx` (Chart.js line), `bits.jsx` (trend icon, verified badge)
-- `frontend-react/src/pages/` — `Home`, `Market`, `CropDetail`, `Farmers`, `DashboardFarmer`, `Alerts`, `NotFound`
+- `frontend-react/src/pages/` — `Home`, `Market`, `CropDetail`, `Alerts`, `NotFound`
 - `frontend-react/src/lib/api.js` — data layer (live market API + local mock fallbacks/reference data)
 - `frontend-react/src/lib/i18n.jsx` — EN/HI/BN dictionaries, crop/category/unit translators and `LanguageProvider`
 - `frontend-react/src/css/` — `theme.css` (design tokens) + `style.css` (market-ledger theme)
@@ -146,5 +147,4 @@ validation messages — via `frontend-react/src/lib/i18n.jsx`. The choice persis
   API itself is unreachable (offline, cold start) the grid falls back to
   demo numbers so the page never goes blank.
 - Farmer listings, alert defaults and location directory are still local demo data.
-- Listings show approximate localities only; exact addresses are never exposed.
 - Place names that really contain "Mandi" (e.g. Ramganj Mandi) are real locations, not branding.

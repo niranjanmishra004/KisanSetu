@@ -4,8 +4,6 @@ import Layout from "./components/Layout.jsx";
 import Home from "./pages/Home.jsx";
 import Market from "./pages/Market.jsx";
 import CropDetail from "./pages/CropDetail.jsx";
-import Farmers from "./pages/Farmers.jsx";
-import DashboardFarmer from "./pages/DashboardFarmer.jsx";
 import Alerts from "./pages/Alerts.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
@@ -18,9 +16,10 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="market" element={<Market />} />
             <Route path="crop" element={<CropDetail />} />
-            <Route path="farmers" element={<Farmers />} />
-            <Route path="dashboard-farmer" element={<DashboardFarmer />} />
             <Route path="alerts" element={<Alerts />} />
+            {/* Removed sections — keep old bookmarks working by sending them home. */}
+            <Route path="farmers" element={<Navigate to="/market" replace />} />
+            <Route path="dashboard-farmer" element={<Navigate to="/" replace />} />
             {/* Auth removed — the app is fully open, no login required.
                 Keep old bookmarks working by sending them to home. */}
             <Route path="login" element={<Navigate to="/" replace />} />

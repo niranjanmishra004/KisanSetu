@@ -3,13 +3,13 @@ import { useSearchParams } from "react-router-dom";
 import {
   getCropById,
   getCropPrice,
-  getNearbyFarmers,
   getPriceHistory,
+  getSavedLocation,
   createAlert,
 } from "../lib/api.js";
 import { useLang } from "../lib/i18n.jsx";
 import { Modal } from "../components/chrome.jsx";
-import { TrendIcon, VerifiedBadge } from "../components/bits.jsx";
+import { TrendIcon } from "../components/bits.jsx";
 import PriceChart from "../components/PriceChart.jsx";
 
 const RANGES = [7, 30, 90, 180, 365];
@@ -36,10 +36,6 @@ export default function CropDetail() {
 
   const [days, setDays] = useState(90);
   const [history, setHistory] = useState([]);
-
-  const [farmers, setFarmers] = useState([]);
-  const [fFarmerDist, setFFarmerDist] = useState("");
-  const [fFarmerVerified, setFFarmerVerified] = useState("");
 
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertCondition, setAlertCondition] = useState("above");
@@ -70,19 +66,6 @@ export default function CropDetail() {
     getPriceHistory(cropId, days, stateParam).then(setHistory);
   }, [cropId, days, stateParam]);
 
-  async function loadFarmers() {
-    const data = await getNearbyFarmers(cropId, {
-      maxDistance: Number(fFarmerDist) || null,
-      verifiedOnly: fFarmerVerified === "1",
-    });
-    setFarmers(data);
-  }
-
-  useEffect(() => {
-    loadFarmers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cropId]);
-
   async function submitAlert(e) {
     e.preventDefault();
     const threshold = Number(alertThreshold);
@@ -90,9 +73,10 @@ export default function CropDetail() {
       alert(t("crop.needThresh"));
       return;
     }
+    const saved = getSavedLocation();
     await createAlert({
       crop: cropId,
-      location: "Kolkata",
+      location: saved && saved.locality ? `${saved.locality}, ${saved.district}` : "All India",
       condition: alertCondition,
       threshold,
       unit: alertCondition.includes("percent") ? "%" : price.unit,
@@ -293,75 +277,6 @@ export default function CropDetail() {
           <div style={{ height: 280 }}>
             <PriceChart points={history} unit={unitName(price.unit)} />
           </div>
-        </div>
-
-        <div className="mt-5">
-          <div className="card">
-            <h3>{t("crop.sellers")}</h3>
-            <div className="filters">
-              <div className="field">
-                <label htmlFor="fFarmerDist">{t("crop.maxDist")}</label>
-                <input
-                  id="fFarmerDist"
-                  type="number"
-                  placeholder={t("c.any")}
-                  value={fFarmerDist}
-                  onChange={(e) => setFFarmerDist(e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="fFarmerVerified">{t("crop.verOnly")}</label>
-                <select
-                  id="fFarmerVerified"
-                  value={fFarmerVerified}
-                  onChange={(e) => setFFarmerVerified(e.target.value)}
-                >
-                  <option value="">{t("c.no")}</option>
-                  <option value="1">{t("c.yes")}</option>
-                </select>
-              </div>
-              <button className="btn btn-outline btn-sm" onClick={loadFarmers}>
-                {t("c.apply")}
-              </button>
-            </div>
-            <div className="table-wrap">
-              <table className="data" id="farmersTable">
-                <thead>
-                  <tr>
-                    <th>{t("crop.thFarmer")}</th>
-                    <th>{t("crop.thDist")}</th>
-                    <th>{t("crop.thQty")}</th>
-                    <th>{t("crop.thPrice")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {farmers.length ? (
-                    farmers.map((f, i) => (
-                      <tr key={i}>
-                        <td>
-                          {f.name} {f.verified ? <VerifiedBadge /> : ""}
-                        </td>
-                        <td>{f.distanceKm} km</td>
-                        <td>
-                          {f.quantity} {unitName(f.unit)}
-                        </td>
-                        <td className="num">
-                          ₹{f.price}/{unitName(f.unit)}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="muted">
-                        {t("crop.noSellers")}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
         </div>
       </div>
 

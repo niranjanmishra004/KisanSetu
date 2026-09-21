@@ -5,11 +5,9 @@ import {
   MOCK_CROPS,
   MOCK_MARKET_PRICES,
   MOCK_PRICE_HISTORY,
-  MOCK_FARMERS,
   MOCK_ALERTS,
   setMockAlerts,
   LOCATIONS,
-  DEMO_USER,
   DEMO_LOCATION,
 } from "../data/mockData.js";
 
@@ -246,13 +244,15 @@ export async function searchBackendProducts(query, { state = "", live = true } =
   const st = state !== undefined ? state : currentState();
   const items = await fetchBackendPricesBest(q, st, { live });
   if (!Array.isArray(items) || !items.length) return [];
-  return items.map((item) => {
+  const rows = items.map((item) => {
     const slug = slugifyProductName(item.product_name);
     const local = MOCK_CROPS.find((c) => c.id === slug || c.name.toLowerCase() === String(item.product_name || "").toLowerCase());
     if (local) return { crop: local, price: liveToPrice(item, MOCK_MARKET_PRICES[local.id]) };
     const crop = backendRecordToCrop(item);
     return { crop, price: liveToPrice(item, undefined) };
   });
+  for (const r of rows) noteObservation(r.crop.id, r.price.modal);
+  return rows;
 }
 
 /** Deduplicate merged price rows by backend identity, falling back to crop id. */
@@ -339,7 +339,10 @@ export async function getCropPrice(cropId, state) {
       const mock = MOCK_MARKET_PRICES[cropId];
       return mock ? { cropId, ...mock, live: false } : null;
     }
-    if (live) return { cropId, ...liveToPrice(live, MOCK_MARKET_PRICES[cropId]) };
+    if (live) {
+      noteObservation(cropId, live.market_price_per_kg);
+      return { cropId, ...liveToPrice(live, MOCK_MARKET_PRICES[cropId]) };
+    }
     return null;
   }
   if (USE_LIVE_MARKET_API && !crop && cropId) {
@@ -353,7 +356,10 @@ export async function getCropPrice(cropId, state) {
       const slug = slugifyProductName(cropId);
       const exact =
         items.find((it) => slugifyProductName(it.product_name) === slug) || items[0];
-      if (exact) return { cropId, ...liveToPrice(exact, undefined) };
+      if (exact) {
+        noteObservation(cropId, exact.market_price_per_kg);
+        return { cropId, ...liveToPrice(exact, undefined) };
+      }
     }
     return null;
   }
@@ -434,6 +440,7 @@ export async function getAllPricesProgressive(state, { onBatch, signal } = {}) {
       const batch = rowsForLocalCrop(MOCK_CROPS[i], await fetchBackendPricesBest(MOCK_CROPS[i].name, st));
       if (signal?.aborted || !batch.length) continue;
       collected.push(...batch);
+      for (const r of batch) if (r.price && r.price.live) noteObservation(r.crop.id, r.price.modal);
       try {
         onBatch?.(batch);
       } catch {
@@ -552,22 +559,6 @@ export async function getPriceHistory(cropId, rangeDays = 30, state) {
   const scaled =
     ratio === 1 ? full : full.map((p) => ({ ...p, price: Math.round(p.price * ratio * 100) / 100 }));
   return scaled.slice(Math.max(0, scaled.length - rangeDays));
-}
-
-export async function getNearbyFarmers(cropId, filters = {}) {
-  await delay(150);
-  let list = MOCK_FARMERS.filter((f) => !cropId || f.crop === cropId);
-  // Backend variant ids (e.g. "red-cabbage", "raw-honey") have no demo
-  // sellers of their own: fall back to the base local crop's sellers so the
-  // table shows nearby options instead of going empty.
-  if (cropId && !list.length && String(cropId).includes("-")) {
-    const base = MOCK_CROPS.find((c) => String(cropId).endsWith(c.id) || String(cropId).includes(c.id));
-    if (base) list = MOCK_FARMERS.filter((f) => f.crop === base.id);
-  }
-  if (filters.maxDistance) list = list.filter((f) => f.distanceKm <= filters.maxDistance);
-  if (filters.verifiedOnly) list = list.filter((f) => f.verified);
-  if (filters.maxPrice) list = list.filter((f) => f.price <= filters.maxPrice);
-  return list.sort((a, b) => a.distanceKm - b.distanceKm);
 }
 
 function persistAlerts(list) {
@@ -733,11 +724,6 @@ async function ipFallbackLocation(originalError) {
   }
 }
 
-export async function getCurrentUser(role) {
-  await delay(80);
-  return DEMO_USER[role] || DEMO_USER.farmer;
-}
-
 export function getSavedLocation() {
   try {
     return JSON.parse(localStorage.getItem(LOCATION_KEY) || "null") || DEMO_LOCATION;
@@ -754,10 +740,12 @@ export function saveLocation(loc) {
   }
 }
 
-/* ---------------- Triggered alert news (auto-expires after 7 days) ---------------- */
+/* ---------------- Triggered alert news (auto-expires after 7 days) ----------------
+   Every item here is a genuine hit from one of the user's own alert rules,
+   evaluated against live backend prices. No demo seeding: an empty feed
+   means nothing has triggered yet. */
 
 const NEWS_KEY = "kisansetu_news";
-const NEWS_SEED_KEY = "kisansetu_news_seeded";
 export const NEWS_TTL_MS = 7 * 24 * 3600 * 1000;
 
 function readNews() {
@@ -777,16 +765,13 @@ function writeNews(list) {
   }
 }
 
-/** All live news items (anything older than 7 days is deleted first). Newest first. */
+/** Genuine rule-hit news only (anything older than 7 days is deleted first). Newest first. */
 export async function getNotifications() {
   await delay();
-  try {
-    if (!localStorage.getItem(NEWS_SEED_KEY)) seedDemoNews();
-  } catch {
-    /* ignore */
-  }
   const now = Date.now();
   const fresh = readNews()
+    // Legacy demo-seeded items (pre-fix builds) are purged on sight.
+    .filter((n) => !(n && typeof n.id === "string" && n.id.startsWith("demo-")))
     .filter((n) => now - (n.createdAt || 0) < NEWS_TTL_MS)
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   writeNews(fresh);
@@ -811,21 +796,63 @@ export async function deleteNotification(id) {
   return { success: true };
 }
 
-/** One-time demo news so the feed is alive on first run. Never re-seeds. */
-function seedDemoNews() {
-  const now = Date.now();
-  const H = 3600 * 1000;
-  const demo = [
-    { id: `demo-${now}-1`, createdAt: now - 2 * H, ruleId: null, crop: "tomato", condition: "above", threshold: 30, unit: "kg", price: 32, changePct: null, location: "Kolkata" },
-    { id: `demo-${now}-2`, createdAt: now - 26 * H, ruleId: null, crop: "onion", condition: "percent_up", threshold: 10, unit: "%", price: 34, changePct: 12.5, location: "Kolkata" },
-    { id: `demo-${now}-3`, createdAt: now - 77 * H, ruleId: null, crop: "potato", condition: "below", threshold: 20, unit: "kg", price: 19, changePct: null, location: "Kolkata" },
-    { id: `demo-${now}-4`, createdAt: now - 122 * H, ruleId: null, crop: "mango", condition: "above", threshold: 40, unit: "kg", price: 44, changePct: null, location: "Kolkata" },
-  ];
-  writeNews(demo);
+/* ------------- Locally observed price history (powers % alerts) -----------
+   The backend exposes no history endpoint, so a percent-change rule is
+   evaluated against prices THIS app has actually observed from the live
+   backend (one entry per live lookup, timestamped). No observations yet →
+   the rule simply waits instead of firing on demo data. */
+
+const OBS_KEY = "kisansetu_price_obs_v1";
+const OBS_KEEP_MS = 30 * 24 * 3600 * 1000; // prune anything older
+const OBS_MIN_SPAN_MS = 24 * 3600 * 1000; // need ≥24h between first/last
+
+function readObs() {
   try {
-    localStorage.setItem(NEWS_SEED_KEY, "1");
+    const saved = JSON.parse(localStorage.getItem(OBS_KEY) || "null");
+    if (saved && typeof saved === "object") return saved;
   } catch {
-    /* ignore */
+    /* corrupted storage */
+  }
+  return {};
+}
+
+/** Record one genuinely observed live price (best-effort, never throws). */
+export function noteObservation(key, modal) {
+  const price = Number(modal);
+  if (!key || !Number.isFinite(price) || price <= 0) return;
+  try {
+    const all = readObs();
+    const now = Date.now();
+    const list = Array.isArray(all[key]) ? all[key] : [];
+    list.push({ t: now, p: price });
+    all[key] = list
+      .filter((e) => e && now - (e.t || 0) < OBS_KEEP_MS)
+      .slice(-1000);
+    localStorage.setItem(OBS_KEY, JSON.stringify(all));
+  } catch {
+    /* private mode / quota: observations are optional */
+  }
+}
+
+/**
+ * % change between the oldest and newest LIVE observations inside the last
+ * `days` days, or null when history is insufficient (fewer than 2 points or
+ * under 24h span). Null means "don't fire yet" — never a demo number.
+ */
+export function getObservedChangePct(key, days = 7) {
+  try {
+    const all = readObs();
+    const list = Array.isArray(all[key]) ? all[key] : [];
+    const cutoff = Date.now() - Math.max(1, Number(days) || 7) * 24 * 3600 * 1000;
+    const pts = list
+      .filter((e) => e && e.t >= cutoff && Number.isFinite(e.p) && e.p > 0)
+      .sort((a, b) => a.t - b.t);
+    if (pts.length < 2) return null;
+    if (pts[pts.length - 1].t - pts[0].t < OBS_MIN_SPAN_MS) return null;
+    const first = pts[0].p;
+    return Math.round(((pts[pts.length - 1].p - first) / first) * 1000) / 10;
+  } catch {
+    return null;
   }
 }
 

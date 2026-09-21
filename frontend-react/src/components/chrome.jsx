@@ -104,7 +104,6 @@ export function Navbar({ location, onOpenLocation }) {
           </div>
           <div className="nav-links">
             <Link to="/market">{t("nav.market")}</Link>
-            <Link to="/farmers">{t("nav.farmers")}</Link>
             <Link to="/alerts">{t("nav.alerts")}</Link>
           </div>
           <LanguageSelect />
@@ -112,9 +111,6 @@ export function Navbar({ location, onOpenLocation }) {
             <i className="bi bi-geo-alt" aria-hidden="true"></i> {location.locality},{" "}
             {location.district}
           </button>
-          <Link to="/dashboard-farmer" className="btn btn-outline btn-sm" id="navAuthBtn">
-            {t("nav.dashboard")}
-          </Link>
           <button
             className="nav-toggle"
             aria-expanded={menuOpen}
@@ -142,11 +138,6 @@ export function Navbar({ location, onOpenLocation }) {
               {t("nav.market")}
               <i className="bi bi-chevron-right" aria-hidden="true"></i>
             </Link>
-            <Link className="nav-menu-link" to="/farmers">
-              <i className="bi bi-people" aria-hidden="true"></i>
-              {t("nav.farmers")}
-              <i className="bi bi-chevron-right" aria-hidden="true"></i>
-            </Link>
             <Link className="nav-menu-link" to="/alerts">
               <i className="bi bi-bell" aria-hidden="true"></i>
               {t("nav.alerts")}
@@ -165,9 +156,6 @@ export function Navbar({ location, onOpenLocation }) {
                 <i className="bi bi-geo-alt" aria-hidden="true"></i> {location.locality},{" "}
                 {location.district}
               </button>
-              <Link to="/dashboard-farmer" className="btn btn-outline btn-sm">
-                {t("nav.dashboard")}
-              </Link>
             </div>
           </div>
         )}
@@ -219,20 +207,7 @@ export function Footer() {
         <div>
           <h4>{t("foot.explore")}</h4>
           <Link to="/market">{t("nav.market")}</Link>
-          <Link to="/farmers">{t("nav.farmers")}</Link>
           <Link to="/alerts">{t("foot.priceAlerts")}</Link>
-          <Link to="/dashboard-farmer">{t("nav.dashboard")}</Link>
-        </div>
-        <div>
-          <h4>{t("foot.account")}</h4>
-          <Link to="/profile">{t("foot.profile")}</Link>
-        </div>
-        <div>
-          <h4>{t("foot.about")}</h4>
-          <a href="#">{t("foot.aboutKs")}</a>
-          <a href="#">{t("foot.contact")}</a>
-          <a href="#">{t("foot.privacy")}</a>
-          <a href="#">{t("foot.langName")}</a>
         </div>
       </div>
       <div className="footer-bottom">

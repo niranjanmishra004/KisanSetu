@@ -189,13 +189,6 @@ export default function Home() {
               <h3>{t("home.c1t")}</h3>
               <p className="muted text-sm mb-0">{t("home.c1d")}</p>
             </Link>
-            <Link className="card card-tight quick-card" to="/farmers">
-              <div className="qc-icon">
-                <i className="bi bi-people" aria-hidden="true"></i>
-              </div>
-              <h3>{t("home.c3t")}</h3>
-              <p className="muted text-sm mb-0">{t("home.c3d")}</p>
-            </Link>
             <Link className="card card-tight quick-card" to="/market">
               <div className="qc-icon">
                 <i className="bi bi-graph-up-arrow" aria-hidden="true"></i>

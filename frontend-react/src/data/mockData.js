@@ -72,17 +72,6 @@ Object.keys(MOCK_MARKET_PRICES).forEach((cropId) => {
   MOCK_PRICE_HISTORY[cropId] = generatePriceHistory(MOCK_MARKET_PRICES[cropId].modal, 365);
 });
 
-const MOCK_FARMERS = [
-  { name: "Ashok Mandal", crop: "tomato", quantity: 500, unit: "kg", price: 25, distanceKm: 4, locality: "Near New Market, Kolkata", verified: true },
-  { name: "Bijoy Haldar", crop: "tomato", quantity: 800, unit: "kg", price: 24, distanceKm: 7, locality: "Sonarpur, South 24 Parganas", verified: false },
-  { name: "Chandan Roy", crop: "tomato", quantity: 300, unit: "kg", price: 27, distanceKm: 10, locality: "Barasat, North 24 Parganas", verified: true },
-  { name: "Dilip Mahato", crop: "potato", quantity: 1200, unit: "kg", price: 21, distanceKm: 6, locality: "Sealdah, Kolkata", verified: true },
-  { name: "Esha Barman", crop: "potato", quantity: 600, unit: "kg", price: 22, distanceKm: 12, locality: "Barrackpore", verified: false },
-  { name: "Farida Khatun", crop: "onion", quantity: 700, unit: "kg", price: 29, distanceKm: 5, locality: "New Market, Kolkata", verified: true },
-  { name: "Gopal Das", crop: "wheat", quantity: 2000, unit: "kg", price: 25, distanceKm: 18, locality: "Asansol", verified: false },
-  { name: "Hema Ghosh", crop: "mango", quantity: 400, unit: "kg", price: 42, distanceKm: 9, locality: "Fruit Market, Kolkata", verified: true },
-];
-
 let MOCK_ALERTS = [
   { id: 1, crop: "tomato", location: "Kolkata", condition: "above", threshold: 30, unit: "kg", active: true },
   { id: 2, crop: "potato", location: "Kolkata", condition: "below", threshold: 18, unit: "kg", active: true },
@@ -951,10 +940,6 @@ const LOCATIONS = {
   }
 };
 
-const DEMO_USER = {
-  farmer: { name: "Ashok Mandal", role: "Farmer", locality: "Sonarpur, South 24 Parganas", state: "West Bengal" },
-};
-
 const DEMO_LOCATION = { locality: "New Market", district: "Kolkata", state: "West Bengal" };
 
 // ---- ESM exports (React port; data above is byte-for-byte the static demo data) ----
@@ -963,9 +948,7 @@ export {
   MOCK_MARKET_PRICES,
   MOCK_PRICE_HISTORY,
   MOCK_ALERTS,
-  MOCK_FARMERS,
   LOCATIONS,
-  DEMO_USER,
   DEMO_LOCATION,
   generatePriceHistory,
 };
