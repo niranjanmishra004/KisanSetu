@@ -15,7 +15,16 @@ export default defineConfig({
         target: MARKET_API_TARGET,
         changeOrigin: true,
         // Strip the `/api/market` prefix before forwarding to Render.
-        rewrite: (path) => path.replace(/^\/api\/market/, ''),
+        // FastAPI only serves `/products/` (trailing slash) — without it
+        // upstream answers 307 to an absolute Render URL, the browser then
+        // follows it cross-origin and CORS blocks the response, so every
+        // live lookup silently fails in dev. Normalizing here keeps the
+        // frontend URL slash-free (Vercel routing requirement) while the
+        // upstream request always hits `/products/` directly (no redirect).
+        rewrite: (path) => {
+          const stripped = path.replace(/^\/api\/market/, '') || '/';
+          return stripped.replace(/^\/products(?=[?#]|$)/, '/products/');
+        },
       },
     },
   },

@@ -25,6 +25,11 @@ export default async function handler(req, res) {
   } catch {
     subPath = (req.url || "/").replace(/^\/api\/market/, "") || "/";
   }
+  // FastAPI only serves `/products/` (trailing slash) — without it upstream
+  // answers 307. Node fetch follows it server-side (no CORS there), but
+  // normalizing avoids the extra redirect hop on every request and keeps
+  // cold-start-budgeted Render calls as fast as possible.
+  subPath = subPath.replace(/^\/products(?=[?#]|$)/, "/products/");
   const target = UPSTREAM + subPath;
 
   // Bound the wait: Render free-tier cold starts can take a while, but we
