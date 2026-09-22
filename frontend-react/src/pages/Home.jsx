@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
-import { getAllPrices, getLocations, detectLocation, saveLocation } from "../lib/api.js";
+import { getAllPricesProgressive, getCachedPrices, dedupePriceRows, getLocations, detectLocation, saveLocation } from "../lib/api.js";
+import { MOCK_CROPS, MOCK_MARKET_PRICES } from "../data/mockData.js";
 import { useLang } from "../lib/i18n.jsx";
 import { TrendIcon } from "../components/bits.jsx";
 
@@ -12,12 +13,29 @@ function readSavedLocationRaw() {
   }
 }
 
+function topTrending(rows) {
+  return [...(rows || [])]
+    .filter((r) => r && r.crop && r.price)
+    .sort((a, b) => Math.abs(b.price.trendPct) - Math.abs(a.price.trendPct))
+    .slice(0, 6);
+}
+
+function demoRows() {
+  return MOCK_CROPS.map((c) => ({ crop: c, price: MOCK_MARKET_PRICES[c.id] })).filter(
+    (p) => p.price
+  );
+}
+
 export default function Home() {
   const { t, cropName, cropLocal, unitName } = useLang();
   const { openLocation } = useOutletContext();
   const navigate = useNavigate();
   const [hero, setHero] = useState("");
-  const [trending, setTrending] = useState([]);
+  // Seed from last visit's cache so the strip never paints empty,
+  // then stream live rows in below.
+  const [trending, setTrending] = useState(() => topTrending(getCachedPrices("")));
+  // Mobile-only dropdown for trending crops (desktop always shows the strip)
+  const [trendOpen, setTrendOpen] = useState(false);
   // Optional state filter for the hero search — empty means "All India".
   const [stateSel, setStateSel] = useState("");
   const [states, setStates] = useState([]);
@@ -33,12 +51,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    getAllPrices().then((all) => {
-      const sorted = [...all]
-        .sort((a, b) => Math.abs(b.price.trendPct) - Math.abs(a.price.trendPct))
-        .slice(0, 6);
-      setTrending(sorted);
+    let cancelled = false;
+    // Stream live rows in per crop (first paint fast), fall back to demo
+    // data if the backend returns nothing — the strip must never go blank.
+    getAllPricesProgressive("", {
+      onBatch: (batch) => {
+        if (!cancelled && batch.length) {
+          setTrending((prev) => topTrending(dedupePriceRows([...prev, ...batch])));
+        }
+      },
+    }).then((rows) => {
+      if (cancelled) return;
+      if (rows && rows.length) {
+        setTrending(topTrending(rows));
+      } else {
+        setTrending((prev) =>
+          prev.length ? prev : topTrending(demoRows())
+        );
+      }
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -172,8 +206,9 @@ export default function Home() {
                 </option>
               ))}
             </select>
-            <button type="submit" className="btn btn-primary">
-              {t("home.search")}
+            <button type="submit" className="btn btn-primary sh-btn">
+              <i className="bi bi-search" aria-hidden="true"></i>
+              <span>{t("home.search")}</span>
             </button>
           </form>
         </div>
@@ -202,11 +237,21 @@ export default function Home() {
 
       <section className="section-tight">
         <div className="container">
-          <div className="flex-between mt-2 mb-0" style={{ marginBottom: 16 }}>
+          <div className="flex-between mt-2 mb-0 trending-head" style={{ marginBottom: 16 }}>
             <h2 style={{ margin: 0 }}>{t("home.trending")}</h2>
-            <Link to="/market">{t("home.viewAll")}</Link>
+            <Link className="trending-viewall" to="/market">{t("home.viewAll")}</Link>
+            <button
+              type="button"
+              className="trending-toggle"
+              aria-expanded={trendOpen}
+              aria-controls="trendingCrops"
+              onClick={() => setTrendOpen((o) => !o)}
+            >
+              <span>{t("home.viewAll").replace("→", "").trim()}</span>
+              <i className="bi bi-chevron-down" aria-hidden="true"></i>
+            </button>
           </div>
-          <div className="tag-strip" id="trendingCrops">
+          <div className={`tag-strip${trendOpen ? " open" : ""}`} id="trendingCrops">
             {trending.map(({ crop, price }) => (
               <Link key={crop.id} className="crop-card" to={`/crop?crop=${crop.id}`}>
                 <div className="name">{cropName(crop)}</div>

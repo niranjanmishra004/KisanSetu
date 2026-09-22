@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { searchCrops, getSavedLocation, saveLocation, detectLocation, searchCropsLive } from "../lib/api.js";
+import { Link, useLocation } from "react-router-dom";
+import { getSavedLocation, saveLocation, detectLocation } from "../lib/api.js";
 import { useLang, LANGS } from "../lib/i18n.jsx";
 import { Logo } from "./bits.jsx";
 import LocationSelects from "./LocationSelects.jsx";
@@ -41,38 +41,12 @@ export function LanguageSelect() {
 
 export function Navbar({ location, onOpenLocation }) {
   const { t } = useLang();
-  const [q, setQ] = useState("");
-  const [matches, setMatches] = useState([]);
-  const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate();
   const routeLoc = useLocation();
 
   useEffect(() => {
     setMenuOpen(false);
-    setOpen(false);
   }, [routeLoc.pathname, routeLoc.search]);
-
-  async function handleInput(v) {
-    setQ(v);
-    if (!v) {
-      setMatches([]);
-      setOpen(false);
-      return;
-    }
-    // Local hits first (fast, offline-capable), then backend-only products
-    // (honey, egg, …) appended. The slice(0, 6) dropdown cap is intentional
-    // UX — the full list stays one Enter away on the Market page.
-    let m = [];
-    try {
-      if (v.trim().length >= 2) m = await searchCropsLive(v);
-      else m = await searchCrops(v);
-    } catch {
-      m = await searchCrops(v).catch(() => []);
-    }
-    setMatches(m.slice(0, 6));
-    setOpen(m.length > 0);
-  }
 
   return (
     <>
@@ -81,27 +55,6 @@ export function Navbar({ location, onOpenLocation }) {
           <Link className="brand" to="/">
             <Logo /> KisanSetu
           </Link>
-          <div className="nav-search">
-            <input
-              id="navSearchInput"
-              type="search"
-              placeholder={t("nav.searchPh")}
-              autoComplete="off"
-              aria-label={t("nav.searchPh")}
-              value={q}
-              onChange={(e) => handleInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && q.trim()) {
-                  navigate(`/market?q=${encodeURIComponent(q.trim())}`);
-                  setOpen(false);
-                }
-              }}
-              onBlur={() => setTimeout(() => setOpen(false), 150)}
-            />
-            {open && (
-              <NavSearchResults matches={matches} />
-            )}
-          </div>
           <div className="nav-links">
             <Link to="/market">{t("nav.market")}</Link>
             <Link to="/alerts">{t("nav.alerts")}</Link>
@@ -125,13 +78,6 @@ export function Navbar({ location, onOpenLocation }) {
           <div className="nav-menu" id="mobileNavMenu">
             <div className="nav-menu-head">
               <span>{t("nav.menu")}</span>
-              <button
-                className="nav-menu-close"
-                onClick={() => setMenuOpen(false)}
-                aria-label={t("nav.close")}
-              >
-                <i className="bi bi-x-lg" aria-hidden="true"></i>
-              </button>
             </div>
             <Link className="nav-menu-link" to="/market">
               <i className="bi bi-bar-chart-line" aria-hidden="true"></i>
@@ -146,48 +92,23 @@ export function Navbar({ location, onOpenLocation }) {
             <div className="nav-menu-row">
               <LanguageSelect />
               <button
-                className="nav-loc"
+                className="nav-loc nav-menu-loc"
                 title={t("loc.title")}
                 onClick={() => {
                   setMenuOpen(false);
                   onOpenLocation();
                 }}
               >
-                <i className="bi bi-geo-alt" aria-hidden="true"></i> {location.locality},{" "}
-                {location.district}
+                <i className="bi bi-geo-alt" aria-hidden="true"></i>{" "}
+                <span className="nav-menu-loc-text">
+                  {location.locality}, {location.district}
+                </span>
               </button>
             </div>
           </div>
         )}
       </nav>
     </>
-  );
-}
-
-function NavSearchResults({ matches }) {
-  const { cropName, cropLocal } = useLang();
-  return (
-    <div
-      id="navSearchResults"
-      className="table-wrap"
-      style={{ position: "absolute", zIndex: 50, width: "100%", marginTop: 4 }}
-    >
-      {matches.map((c) => (
-        <Link
-          key={c.id}
-          to={`/crop?crop=${c.id}`}
-          style={{
-            display: "block",
-            padding: "10px 12px",
-            textDecoration: "none",
-            color: "var(--ink)",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          {cropName(c)} <span className="muted text-sm">({cropLocal(c)})</span>
-        </Link>
-      ))}
-    </div>
   );
 }
 
