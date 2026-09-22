@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { getAllPricesProgressive, getCachedPrices, dedupePriceRows, getLocations, detectLocation, saveLocation } from "../lib/api.js";
+import { LanguageSelect } from "../components/chrome.jsx";
 import { MOCK_CROPS, MOCK_MARKET_PRICES } from "../data/mockData.js";
 import { useLang } from "../lib/i18n.jsx";
 import { TrendIcon } from "../components/bits.jsx";
@@ -125,13 +126,16 @@ export default function Home() {
     <main id="main">
       <section className="hero">
         <div className="container">
-          <span className="eyebrow-loc" id="locStatusBox">
+          <div className="hero-meta-row">
+            <span className="eyebrow-loc" id="locStatusBox">
             {locBox.kind === "saved" ? (
               <>
                 <i className="bi bi-geo-alt" aria-hidden="true"></i>{" "}
-                {t("home.showingFor", {
-                  loc: `${locBox.loc.locality}, ${locBox.loc.district}`,
-                })}{" "}
+                <span className="eyebrow-text">
+                  {t("home.showingFor", {
+                    loc: `${locBox.loc.locality}, ${locBox.loc.district}`,
+                  })}
+                </span>{" "}
                 &nbsp;·&nbsp;{" "}
                 <a
                   href="#"
@@ -177,7 +181,11 @@ export default function Home() {
                 <i className="bi bi-geo-alt" aria-hidden="true"></i> {t("home.detecting")}
               </>
             )}
-          </span>
+            </span>
+            <span className="hero-lang">
+              <LanguageSelect short />
+            </span>
+          </div>
           <h1>
             {t("home.t1")}
             <br />

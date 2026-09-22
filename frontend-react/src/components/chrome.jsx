@@ -5,7 +5,7 @@ import { useLang, LANGS } from "../lib/i18n.jsx";
 import { Logo } from "./bits.jsx";
 import LocationSelects from "./LocationSelects.jsx";
 
-export function LanguageSelect() {
+export function LanguageSelect({ short = false } = {}) {
   const { lang, setLang, t } = useLang();
   return (
     <label
@@ -31,7 +31,7 @@ export function LanguageSelect() {
       >
         {LANGS.map((l) => (
           <option key={l.code} value={l.code}>
-            {l.label}
+            {short ? l.short || l.label : l.label}
           </option>
         ))}
       </select>
@@ -90,7 +90,6 @@ export function Navbar({ location, onOpenLocation }) {
               <i className="bi bi-chevron-right" aria-hidden="true"></i>
             </Link>
             <div className="nav-menu-row">
-              <LanguageSelect />
               <button
                 className="nav-loc nav-menu-loc"
                 title={t("loc.title")}

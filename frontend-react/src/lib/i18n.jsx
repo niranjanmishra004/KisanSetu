@@ -5,7 +5,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 export const LANGS = [
-  { code: "en", label: "English" },
+  { code: "en", label: "English", short: "Eng" },
   { code: "hi", label: "हिन्दी" },
   { code: "bn", label: "বাংলা" },
 ];

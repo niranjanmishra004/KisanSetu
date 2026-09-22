@@ -25,7 +25,8 @@ Deploys as a static Vite site. The same-origin `/api/market` proxy
 never hits CORS limits, and SPA rewrites send everything else to
 `index.html` (see `vercel.json`; mirrored at the repo root and inside
 `frontend-react/` — only the set matching the Vercel project's Root
-Directory is active). Internet is needed for CDNs (Bootstrap Icons 1.11.3,
+Directory is active; both also set year-long immutable caching for the
+hashed `/assets/*` bundles). Internet is needed for CDNs (Bootstrap Icons 1.11.3,
 Fraunces + IBM Plex + Noto Sans Devanagari/Bengali fonts) and for the live
 price API.
 
@@ -41,7 +42,7 @@ Icons are Bootstrap Icons (SVG) — no emojis in the UI.
 
 | Route | Purpose |
 | ----- | ------- |
-| `/` | Home: hero, crop search with autocomplete, location flow, quick actions, trending crops, how-it-works |
+| `/` | Home: hero (crop search + state filter, location + compact language pills), quick actions, trending crops (tap-to-open dropdown on mobile), how-it-works |
 | `/market` | All crops with **live** price + trend; search, state filter, sort |
 | `/crop?crop=tomato` | Crop detail: quantity calculator (kg/quintal/tonne), price range, min/avg/max, Chart.js history (7d–1y), price-alert modal |
 
@@ -56,7 +57,10 @@ Icons are Bootstrap Icons (SVG) — no emojis in the UI.
   streams rows in per crop (`getAllPricesProgressive`) and reuses last
   visit's prices from `localStorage` (`getCachedPrices`/`storePrices`) while
   refreshing, so cold starts don't blank the page. `warmMarketApi()` wakes
-  the free-tier backend on app boot.
+  the free-tier backend on app boot. Home trending behaves the same way:
+  it seeds from `getCachedPrices`, streams live rows via
+  `getAllPricesProgressive`, and falls back to demo data so the strip never
+  goes blank.
 - **Price history charts** — `getPriceHistory` rescales the stored 365-day curve to
   the live modal price and slices 7/30/90/180/365-day ranges (Chart.js line).
 - **Price alerts** — rules created per crop (`above` / `below` / `percent_up` /
@@ -67,9 +71,12 @@ Icons are Bootstrap Icons (SVG) — no emojis in the UI.
 - **Location flow** — browser geolocation → BigDataCloud / Nominatim reverse-geocode
   → `ipapi.co` IP fallback → manual State→District→Town picker with an
   **"Other town / village"** free-text fallback; saved to `localStorage`.
-- **Language selector in the navbar** — English / हिन्दी / বাংলা. Translates the
+- **Language selector** — English / हिन्दी / বাংলা. Translates the
   whole UI including crop, category and unit names
   (`frontend-react/src/lib/i18n.jsx`); choice persists in `localStorage`.
+  On desktop it lives in the navbar; on mobile the hero shows a compact
+  `Eng` pill beside the location pill, and the hamburger menu holds the
+  Market/Alerts links plus the location pill.
 
 ## Data: what is live vs local
 
@@ -109,7 +116,7 @@ Live = all-India Agmarknet modal average via `data.gov.in` (resource
 `arrival_date`, `markets_count`, min/max and `matched_commodity`; non-mandi
 goods (ghee, paneer, honey, milk, oils, pickles…) return
 `source: static_fallback`. Requires `DATA_GOV_IN_API_KEY` for live data
-(copy `.env.example` → `.env`); without a key it serves static prices.
+on the backend; without a key it serves static prices.
 Run locally: `uvicorn main:app --host 0.0.0.0 --port 8000`.
 
 **Local (`frontend-react/src/data/mockData.js` + `localStorage`):**
@@ -130,7 +137,7 @@ Run locally: `uvicorn main:app --host 0.0.0.0 --port 8000`.
 - `frontend-react/src/lib/api.js` — data layer (live market API + local mock fallbacks/reference data)
 - `frontend-react/src/lib/i18n.jsx` — EN/HI/BN dictionaries, crop/category/unit translators and `LanguageProvider`
 - `frontend-react/src/css/` — `theme.css` (design tokens) + `style.css` (market-ledger theme)
-- `api/market/[...path].js` + `frontend-react/vite.config.js` + `vercel.json` — same-origin API proxy + SPA rewrites
+- `api/market/[...path].js` + `frontend-react/vite.config.js` + `vercel.json` — same-origin API proxy + SPA rewrites + immutable asset caching
 
 ## Language
 
