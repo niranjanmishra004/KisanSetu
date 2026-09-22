@@ -53,7 +53,11 @@ export function Navbar({ location, onOpenLocation }) {
       <nav className="nav">
         <div className="nav-inner">
           <Link className="brand" to="/">
-            <Logo /> KisanSetu
+            <Logo />
+            <span className="brand-text">
+              <span className="brand-name">KisanSetu</span>
+              <span className="brand-tagline">Your Crop. Your Value.</span>
+            </span>
           </Link>
           <div className="nav-links">
             <Link to="/market">{t("nav.market")}</Link>

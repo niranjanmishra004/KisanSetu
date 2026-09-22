@@ -46,6 +46,21 @@
   color: #fff;
   display: grid; place-items: center;
   font-size: 1rem;
+  flex-shrink: 0;
+}
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.brand-tagline {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--green-900);
+  white-space: nowrap;
 }
 .nav-search {
   flex: 1;
