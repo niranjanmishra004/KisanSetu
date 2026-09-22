@@ -150,7 +150,8 @@ export default function Home() {
               </>
             ) : locBox.kind === "denied" ? (
               <>
-                {t("home.denied")}{" "}
+                <i className="bi bi-geo-alt" aria-hidden="true"></i>{" "}
+                <span className="eyebrow-text">{t("home.denied")}</span>{" "}
                 <a
                   href="#"
                   id="locManualLink"
@@ -164,7 +165,8 @@ export default function Home() {
               </>
             ) : locBox.kind === "unavailable" ? (
               <>
-                {t("home.unavailable")}{" "}
+                <i className="bi bi-geo-alt" aria-hidden="true"></i>{" "}
+                <span className="eyebrow-text">{t("home.unavailable")}</span>{" "}
                 <a
                   href="#"
                   id="locManualLink"

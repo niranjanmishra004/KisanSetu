@@ -120,11 +120,11 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="footer-inner">
-        <div>
-          <Link className="brand" to="/" style={{ marginBottom: 8 }}>
-            <Logo /> KisanSetu
+        <div className="footer-brand">
+          <Link className="brand brand-footer" to="/">
+            <Logo size={32} /> KisanSetu
           </Link>
-          <p className="muted text-sm" style={{ maxWidth: 260 }}>
+          <p className="footer-tag">
             {t("foot.tag")}
           </p>
         </div>

@@ -559,6 +559,18 @@ table.data tr:last-child td { border-bottom: none; }
 .footer h4 { font-family: var(--font-body); font-size: 0.85rem; color: var(--ink); margin-bottom: var(--sp-3); }
 .footer a { display: block; color: var(--ink-muted); text-decoration: none; font-size: 0.88rem; margin-bottom: 8px; }
 .footer a:hover { color: var(--green-700); }
+/* Footer brand block */
+.footer-brand .brand-footer { font-size: 1.35rem; margin-bottom: 10px; color: var(--green-900); }
+.footer-brand .brand-footer .mark {
+  box-shadow: 0 4px 12px rgba(31, 92, 63, 0.28);
+}
+.footer-tag {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  max-width: 280px;
+  margin: 0;
+}
 .footer-bottom {
   max-width: var(--container); margin: var(--sp-6) auto 0; padding: var(--sp-4) var(--sp-5) 0;
   border-top: 1px solid var(--border-strong);
@@ -634,6 +646,9 @@ table.data tr:last-child td { border-bottom: none; }
 }
 
 @media (max-width: 640px) {
+  /* Header: compact brand so logo + name + tagline + hamburger fit 320px */
+  .brand { font-size: 1.2rem; }
+  .brand-tagline { font-size: 0.6rem; }
   /* Hero location + language pills in one row (mobile only) */
   .hero-meta-row { gap: 8px; flex-wrap: nowrap; align-items: center; margin-bottom: min(7vw, 40px); }
   .hero-meta-row .eyebrow-loc {
@@ -643,6 +658,8 @@ table.data tr:last-child td { border-bottom: none; }
     white-space: nowrap;
     font-size: 0.75rem;
     padding: 6px 10px;
+    min-height: 44px;
+    align-items: center;
   }
   .hero-meta-row .eyebrow-loc i,
   .hero-meta-row .eyebrow-loc a { flex-shrink: 0; }
@@ -658,11 +675,24 @@ table.data tr:last-child td { border-bottom: none; }
     padding: 6px 8px;
     gap: 4px;
     font-weight: 600;
+    min-height: 44px;
+    justify-content: center;
+  }
+  /* Hero type: balanced, readable, not oversized */
+  .hero h1 {
+    font-size: 2rem;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  .hero .sub {
+    font-size: 1rem;
+    line-height: 1.65;
+    max-width: 36ch;
   }
   /* Hero search stacks full-width */
   .search-hero { flex-direction: column; }
-  .search-hero input { padding: 14px 16px; font-size: 1rem; }
-  .search-hero select { width: 100%; }
+  .search-hero input { padding: 14px 16px; font-size: 1rem; min-height: 48px; }
+  .search-hero select { width: 100%; min-height: 48px; }
   .search-hero .btn { width: 100%; }
   .sh-btn {
     width: 100%;
@@ -699,7 +729,8 @@ table.data tr:last-child td { border-bottom: none; }
   .step h3 { font-size: 0.92rem !important; margin-bottom: 4px; }
   .step p { font-size: 0.82rem; margin-bottom: 0; }
   /* Trending crops dropdown (mobile only): hide View-all link, tap to open/close */
-  .trending-head { gap: 10px; }
+  .trending-head { gap: 10px; flex-wrap: wrap; row-gap: 8px; }
+  .trending-head h2 { font-size: 1.3rem; }
   .trending-viewall { display: none; }
   .trending-toggle {
     display: inline-flex;
@@ -708,14 +739,15 @@ table.data tr:last-child td { border-bottom: none; }
     background: #fff;
     border: 1px solid var(--green-700);
     border-radius: 20px;
-    padding: 5px 11px;
+    padding: 10px 15px;
     font-family: var(--font-body);
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--green-700);
     cursor: pointer;
     white-space: nowrap;
     line-height: 1.2;
+    min-height: 40px;
   }
   .trending-toggle i {
     font-size: 0.7rem;
@@ -771,6 +803,14 @@ table.data tr:last-child td { border-bottom: none; }
   .quick-card { padding: 14px; height: 100%; display: flex; flex-direction: column; }
   .quick-card .qc-icon { font-size: 1.3rem; margin-bottom: 6px; }
   .quick-card h3 { font-size: 0.92rem; }
+  .quick-card p { font-size: 0.8rem; line-height: 1.5; }
+}
+
+@media (max-width: 340px) {
+  /* Extremely narrow screens: stack cards instead of forcing tiny columns */
+  .quick-cards { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .steps .step:nth-child(3) { grid-column: auto; }
 }
 
 @keyframes navMenuSlide {
